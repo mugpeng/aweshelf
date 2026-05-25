@@ -1,0 +1,68 @@
+"""List, search, recent commands."""
+
+import click
+
+from aweshelf.lib.store import load_bookmarks, bookmark_path
+
+
+def format_table(bookmarks: list) -> str:
+    if not bookmarks:
+        return "No bookmarks found."
+
+    headers = ["ID", "PROVIDER", "TITLE", "CATEGORY", "PROFILE"]
+    rows = []
+    for b in bookmarks:
+        rows.append([
+            b.id,
+            b.provider,
+            b.title[:40] + ("..." if len(b.title) > 40 else ""),
+            b.category or "-",
+            b.aweswitch_profile or "-",
+        ])
+
+    widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            widths[i] = max(widths[i], len(cell))
+
+    lines = []
+    header_line = "  ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
+    lines.append(header_line)
+    lines.append("  ".join("-" * w for w in widths))
+    for row in rows:
+        line = "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
+@click.command("list")
+@click.option("-c", "--category", default=None, help="Filter by category.")
+@click.option("-p", "--provider", default=None, help="Filter by provider.")
+def list_command(category, provider):
+    """List all bookmarks."""
+    bookmarks = load_bookmarks()
+    if category:
+        bookmarks = [b for b in bookmarks if b.category == category]
+    if provider:
+        bookmarks = [b for b in bookmarks if b.provider == provider]
+    click.echo(format_table(bookmarks))
+
+
+@click.command("search")
+@click.argument("query")
+def search_command(query):
+    """Search bookmarks by title."""
+    bookmarks = load_bookmarks()
+    query_lower = query.lower()
+    results = [b for b in bookmarks if query_lower in b.title.lower()]
+    click.echo(format_table(results))
+
+
+@click.command("recent")
+@click.option("-n", "--count", default=10, help="Number of recent bookmarks.")
+def recent_command(count):
+    """Show recently bookmarked sessions."""
+    bookmarks = load_bookmarks()
+    bookmarks.sort(key=lambda b: b.bookmarked_at, reverse=True)
+    click.echo(format_table(bookmarks[:count]))

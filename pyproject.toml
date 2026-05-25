@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aweshelf"
+version = "0.1.0"
+description = "Bookmark, categorize, and restore AI coding sessions with aweswitch profiles."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["click>=8.1", "textual>=0.40"]
+authors = [
+  { name = "Peng" }
+]
+license = "MPL-2.0"
+keywords = ["ai", "agent", "claude", "codex", "bookmark", "session", "aweswitch"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Utilities"
+]
+
+[project.scripts]
+aweshelf = "aweshelf.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
