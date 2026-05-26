@@ -1,38 +1,42 @@
 """Resume command."""
 
-import os
-
 import click
 
+from aweshelf.lib.resume import (
+    ResumeError,
+    build_resume_target,
+    format_resume_target,
+    run_resume_target,
+)
 from aweshelf.lib.store import find_bookmark
-from aweshelf.lib.aweswitch import profile_exists, build_resume_command
 
 
 @click.command("resume")
 @click.argument("bookmark_id")
 @click.option("--profile", default=None, help="Override aweswitch profile.")
 @click.option("--raw", is_flag=True, help="Skip aweswitch, use claude/codex directly.")
-def resume_command(bookmark_id, profile, raw):
+@click.option("--dry-run", is_flag=True, help="Print the resume command without running it.")
+def resume_command(bookmark_id, profile, raw, dry_run):
     """Resume a bookmarked session."""
     b = find_bookmark(bookmark_id)
     if b is None:
         raise click.ClickException(f"bookmark not found: {bookmark_id}")
 
-    use_profile = profile or b.aweswitch_profile
-
-    if use_profile and not raw:
-        if not profile_exists(use_profile):
-            click.echo(f"Warning: aweswitch profile '{use_profile}' not found.", err=True)
-            click.echo("Use --raw to skip aweswitch, or --profile to specify a different profile.", err=True)
-            raise SystemExit(1)
-
-    cmd = build_resume_command(b.provider, use_profile, b.session_id, raw=raw)
+    try:
+        target = build_resume_target(b, profile_override=profile, raw=raw)
+    except ResumeError as exc:
+        raise click.ClickException(str(exc))
+    if target.warning:
+        click.echo(f"Warning: {target.warning}", err=True)
     click.echo(f"Resuming {b.id} — {b.title}")
-    click.echo(f"  $ {' '.join(cmd)}")
+    click.echo(f"  $ {format_resume_target(target)}")
+
+    if dry_run:
+        return
 
     try:
-        os.execvpe(cmd[0], cmd, os.environ)
+        run_resume_target(target)
     except FileNotFoundError:
-        raise click.ClickException(f"command not found: {cmd[0]}")
+        raise click.ClickException(f"command not found: {target.argv[0]}")
     except OSError as exc:
-        raise click.ClickException(f"failed to run {cmd[0]}: {exc}")
+        raise click.ClickException(f"failed to run {target.argv[0]}: {exc}")

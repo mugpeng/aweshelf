@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from aweshelf.types import Bookmark
 from aweshelf.lib.store import (
+    BookmarkStoreError,
     generate_id,
     load_bookmarks,
     save_bookmarks,
@@ -38,9 +39,16 @@ def make_bookmark(**kwargs) -> Bookmark:
 
 class StoreTests(unittest.TestCase):
     def test_generate_id_format(self):
-        bid = generate_id()
-        self.assertTrue(bid.startswith("bkm_"))
-        self.assertEqual(len(bid), 10)
+        bid = generate_id([])
+        self.assertEqual(bid, "aweshelf_0001")
+
+    def test_generate_id_uses_next_highest_sequential_id(self):
+        bookmarks = [
+            make_bookmark(id="aweshelf_0001", session_id="s1"),
+            make_bookmark(id="bkm_aaaaaa", session_id="s2"),
+            make_bookmark(id="aweshelf_0012", session_id="s3"),
+        ]
+        self.assertEqual(generate_id(bookmarks), "aweshelf_0013")
 
     def test_load_empty_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -51,6 +59,14 @@ class StoreTests(unittest.TestCase):
     def test_load_nonexistent_file(self):
         result = load_bookmarks(Path("/nonexistent/path.json"))
         self.assertEqual(result, [])
+
+    def test_load_invalid_json_raises_store_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bookmarks.json"
+            path.write_text("{bad json")
+
+            with self.assertRaises(BookmarkStoreError):
+                load_bookmarks(path)
 
     def test_save_and_load_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,9 +90,9 @@ class StoreTests(unittest.TestCase):
     def test_add_bookmark(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bookmarks.json"
-            b = make_bookmark()
+            b = make_bookmark(id="")
             result = add_bookmark(b, path)
-            self.assertEqual(result.id, b.id)
+            self.assertEqual(result.id, "aweshelf_0001")
 
             loaded = load_bookmarks(path)
             self.assertEqual(len(loaded), 1)

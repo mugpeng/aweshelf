@@ -2,7 +2,8 @@
 
 import json
 import os
-import secrets
+import re
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,11 @@ from aweshelf.types import Bookmark
 
 
 CONFIG_DIR = Path("~/.config/aweshelf")
+ID_RE = re.compile(r"^aweshelf_(\d+)$")
+
+
+class BookmarkStoreError(ValueError):
+    """Raised when the bookmark store cannot be read safely."""
 
 
 def bookmark_path() -> Path:
@@ -19,8 +25,14 @@ def bookmark_path() -> Path:
     return (CONFIG_DIR / "bookmarks.json").expanduser()
 
 
-def generate_id() -> str:
-    return f"bkm_{secrets.token_hex(3)}"
+def generate_id(bookmarks: Optional[list[Bookmark]] = None) -> str:
+    bookmarks = bookmarks or []
+    highest = 0
+    for bookmark in bookmarks:
+        match = ID_RE.match(bookmark.id)
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return f"aweshelf_{highest + 1:04d}"
 
 
 def load_bookmarks(path: Optional[Path] = None) -> list[Bookmark]:
@@ -30,10 +42,17 @@ def load_bookmarks(path: Optional[Path] = None) -> list[Bookmark]:
         return []
     try:
         data = json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
-        return []
+    except json.JSONDecodeError as exc:
+        raise BookmarkStoreError(f"invalid bookmark JSON at {path}: {exc}") from exc
+    except OSError as exc:
+        raise BookmarkStoreError(f"failed to read bookmark store at {path}: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("bookmarks", []), list):
+        raise BookmarkStoreError(f"bookmark store at {path} must contain a bookmarks list")
     raw = data.get("bookmarks", [])
-    return [Bookmark.from_dict(b) for b in raw]
+    try:
+        return [Bookmark.from_dict(b) for b in raw]
+    except (KeyError, TypeError) as exc:
+        raise BookmarkStoreError(f"bookmark store at {path} contains invalid bookmark data") from exc
 
 
 def save_bookmarks(bookmarks: list[Bookmark], path: Optional[Path] = None) -> None:
@@ -41,8 +60,16 @@ def save_bookmarks(bookmarks: list[Bookmark], path: Optional[Path] = None) -> No
     path = Path(path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {"version": 1, "bookmarks": [b.to_dict() for b in bookmarks]}
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-    os.chmod(path, 0o600)
+    fd, tmp_name = tempfile.mkstemp(prefix=".bookmarks-", suffix=".json", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w") as handle:
+            json.dump(data, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
 
 
 def find_bookmark(bookmark_id: str, path: Optional[Path] = None) -> Optional[Bookmark]:
@@ -67,7 +94,7 @@ def add_bookmark(bookmark: Bookmark, path: Optional[Path] = None) -> Bookmark:
         if b.session_id == bookmark.session_id:
             raise ValueError(f"session already bookmarked: {b.id}")
     if not bookmark.id:
-        bookmark.id = generate_id()
+        bookmark.id = generate_id(bookmarks)
     bookmarks.append(bookmark)
     save_bookmarks(bookmarks, path)
     return bookmark

@@ -6,7 +6,7 @@ from typing import Optional
 import click
 
 from aweshelf.types import Bookmark
-from aweshelf.lib.store import add_bookmark, list_categories, generate_id, bookmark_path
+from aweshelf.lib.store import add_bookmark, list_categories, bookmark_path
 from aweshelf.lib.discovery import find_project_sessions, find_recent_session
 from aweshelf.lib.session import parse_session_meta
 from aweshelf.lib.aweswitch import detect_profile, load_aweswitch_config
@@ -102,7 +102,7 @@ def run_bookmark(
             pass
 
     bookmark = Bookmark(
-        id=generate_id(),
+        id="",
         provider=provider,
         session_id=session_id,
         title=title,

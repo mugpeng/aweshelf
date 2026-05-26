@@ -12,9 +12,19 @@ from aweshelf.types import Bookmark
 class BookmarkBrowser(App):
     """Browse and select bookmarks."""
 
+    EMPTY_MESSAGE = "No bookmarks found. Run aweshelf bookmark first."
+    HELP_TEXT = "\n".join([
+        "Enter  Resume selected bookmark",
+        "r      Resume selected bookmark",
+        "?      Show this help",
+        "q      Quit",
+    ])
+
     BINDINGS = [
+        Binding("enter", "resume", "Resume"),
         Binding("q", "quit", "Quit"),
         Binding("r", "resume", "Resume"),
+        Binding("?", "help", "Help"),
     ]
 
     CSS = """
@@ -61,6 +71,10 @@ class BookmarkBrowser(App):
         table = self.query_one("#table", DataTable)
         table.clear()
         self._bookmarks = load_bookmarks()
+        if not self._bookmarks:
+            self.query_one("#detail-title", Static).update(self.EMPTY_MESSAGE)
+            self.query_one("#detail-body", Static).update(self.HELP_TEXT)
+            return
         for b in self._bookmarks:
             table.add_row(
                 b.id,
@@ -106,3 +120,7 @@ class BookmarkBrowser(App):
     def action_resume(self) -> None:
         if self._selected:
             self.exit(result=self._selected)
+
+    def action_help(self) -> None:
+        self.query_one("#detail-title", Static).update("Keyboard shortcuts")
+        self.query_one("#detail-body", Static).update(self.HELP_TEXT)

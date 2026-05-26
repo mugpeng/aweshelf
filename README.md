@@ -38,7 +38,7 @@ aweshelf bookmark
 aweshelf list
 
 # Resume a bookmark
-aweshelf resume bkm_a1b2c3
+aweshelf resume aweshelf_0001
 
 # Browse interactively
 aweshelf browse
@@ -53,7 +53,7 @@ Bookmarks are stored at `~/.config/aweshelf/bookmarks.json`. Override with `AWES
   "version": 1,
   "bookmarks": [
     {
-      "id": "bkm_a1b2c3",
+      "id": "aweshelf_0001",
       "provider": "claude",
       "session_id": "550e8400-...",
       "title": "Fix auth middleware bug",
@@ -76,7 +76,7 @@ aweshelf recent [-n COUNT]
 aweshelf show BOOKMARK_ID [--json]
 aweshelf edit BOOKMARK_ID [-t TITLE] [-c CATEGORY] [--profile PROFILE]
 aweshelf rm BOOKMARK_ID [--force]
-aweshelf resume BOOKMARK_ID [--profile PROFILE] [--raw]
+aweshelf resume BOOKMARK_ID [--profile PROFILE] [--raw] [--dry-run]
 aweshelf browse
 ```
 
