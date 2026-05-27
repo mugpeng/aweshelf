@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="logo/aweshelf.png" alt="aweshelf" width="860">
   <h1>aweshelf: 会话书签管理器</h1>
   <p><strong>收藏、分类、恢复 AI 编程会话，支持 aweswitch 配置恢复。</strong></p>
   <p>轻量 CLI-first 工具，支持 Claude Code 和 Codex。</p>
@@ -14,6 +15,7 @@
     <img src="https://img.shields.io/badge/status-alpha-c96a3d?style=flat-square" alt="Status">
     <img src="https://img.shields.io/badge/install-pip-22C55E?style=flat-square" alt="pip install">
     <img src="https://img.shields.io/badge/platform-terminal-334155?style=flat-square" alt="Platform">
+    <img src="https://img.shields.io/pepy/dt/aweshelf?style=flat-square" alt="PyPI downloads">
     <img src="https://img.shields.io/github/stars/Webioinfo01/aweshelf?style=flat-square" alt="GitHub stars">
   </p>
 </div>

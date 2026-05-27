@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="logo/aweshelf.png" alt="aweshelf" width="860">
   <h1>aweshelf: Session Bookmark Manager</h1>
   <p><strong>Bookmark, categorize, and restore AI coding sessions with aweswitch profiles.</strong></p>
   <p>A lightweight CLI-first tool for Claude Code and Codex session management.</p>
@@ -14,6 +15,7 @@
     <img src="https://img.shields.io/badge/status-alpha-c96a3d?style=flat-square" alt="Status">
     <img src="https://img.shields.io/badge/install-pip-22C55E?style=flat-square" alt="pip install">
     <img src="https://img.shields.io/badge/platform-terminal-334155?style=flat-square" alt="Platform">
+    <img src="https://img.shields.io/pepy/dt/aweshelf?style=flat-square" alt="PyPI downloads">
     <img src="https://img.shields.io/github/stars/Webioinfo01/aweshelf?style=flat-square" alt="GitHub stars">
   </p>
 </div>
