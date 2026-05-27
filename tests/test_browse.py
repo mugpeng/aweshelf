@@ -58,14 +58,16 @@ class BrowseTests(unittest.TestCase):
 
     def test_mode_toggle_binding(self):
         keys = {binding.key for binding in BookmarkBrowser.BINDINGS}
-        self.assertIn("m", keys)
+        self.assertIn("c", keys)
+        self.assertNotIn("m", keys)
 
     def test_sort_cycle_binding(self):
         keys = {binding.key for binding in BookmarkBrowser.BINDINGS}
         self.assertIn("s", keys)
 
     def test_help_text_lists_mode_and_sort(self):
-        self.assertIn("m", BookmarkBrowser.HELP_TEXT)
+        self.assertIn("c", BookmarkBrowser.HELP_TEXT)
+        self.assertNotIn("m      Toggle Category", BookmarkBrowser.HELP_TEXT)
         self.assertIn("s", BookmarkBrowser.HELP_TEXT)
         self.assertIn("Category", BookmarkBrowser.HELP_TEXT)
         self.assertNotIn("mode", BookmarkBrowser.HELP_TEXT.lower())
