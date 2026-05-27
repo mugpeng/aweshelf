@@ -12,6 +12,7 @@ class Bookmark:
     title: str
     category: str
     project_path: str
+    first_prompt: str = ""
     aweswitch_profile: str | None = None
     bookmarked_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -27,6 +28,7 @@ class Bookmark:
             title=data["title"],
             category=data.get("category", ""),
             project_path=data.get("project_path", ""),
+            first_prompt=data.get("first_prompt", ""),
             aweswitch_profile=data.get("aweswitch_profile"),
             bookmarked_at=data.get("bookmarked_at", datetime.now(timezone.utc).isoformat()),
         )

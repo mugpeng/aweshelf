@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from aweshelf.lib.session import parse_session_meta, detect_provider, extract_title_from_messages, clean_title
+from aweshelf.lib.session import parse_session_meta, detect_provider, extract_title_from_messages, extract_first_prompt, clean_title
 
 
 def write_jsonl(path: Path, entries: list[dict]) -> None:
@@ -69,6 +69,39 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(meta["model"], "claude-sonnet-4-20250514")
             self.assertEqual(meta["project_path"], "/home/user/project")
             self.assertEqual(meta["provider"], "claude")
+
+    def test_extract_first_prompt_returns_full_text(self):
+        long_text = "x" * 200
+        messages = [{"content": long_text}]
+        result = extract_first_prompt(messages)
+        self.assertEqual(len(result), 200)
+        self.assertFalse(result.endswith("..."))
+
+    def test_extract_first_prompt_truncation_differs_from_title(self):
+        long_text = "a" * 200
+        messages = [{"content": long_text}]
+        prompt = extract_first_prompt(messages)
+        title = extract_title_from_messages(messages)
+        self.assertEqual(len(prompt), 200)
+        self.assertTrue(len(title) <= 80)
+
+    def test_extract_first_prompt_empty_messages(self):
+        self.assertEqual(extract_first_prompt([]), "")
+
+    def test_extract_first_prompt_from_content_list(self):
+        messages = [{"content": [{"type": "text", "text": "Hello world"}]}]
+        self.assertEqual(extract_first_prompt(messages), "Hello world")
+
+    def test_parse_session_meta_includes_first_prompt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "test-session.jsonl"
+            write_jsonl(path, [
+                {"type": "summary", "sessionId": "abc", "cwd": "/tmp"},
+                {"role": "user", "content": "x" * 200},
+            ])
+            meta = parse_session_meta(path)
+            self.assertIn("first_prompt", meta)
+            self.assertEqual(len(meta["first_prompt"]), 200)
 
     def test_parse_session_meta_fallback_session_id(self):
         with tempfile.TemporaryDirectory() as tmp:

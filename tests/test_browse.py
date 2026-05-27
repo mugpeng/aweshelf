@@ -78,6 +78,17 @@ class BrowseTests(unittest.TestCase):
         from aweshelf.tui.app import SORT_ORDER
         self.assertEqual(SORT_ORDER, ["cat_id", "id"])
 
+    def test_cat_key_prefix(self):
+        from aweshelf.tui.app import CAT_KEY_PREFIX
+        self.assertTrue(CAT_KEY_PREFIX.startswith("__"))
+
+    def test_is_cat_row_skips_category_headers(self):
+        from aweshelf.tui.app import BookmarkBrowser, CAT_KEY_PREFIX
+        app = BookmarkBrowser()
+        self.assertTrue(app._is_cat_row(f"{CAT_KEY_PREFIX}backend"))
+        self.assertFalse(app._is_cat_row("aweshelf_0001"))
+        self.assertFalse(app._is_cat_row(None))
+
 
 @unittest.skipIf(BookmarkBrowser is None, "textual is not installed")
 class EditScreenTests(unittest.TestCase):

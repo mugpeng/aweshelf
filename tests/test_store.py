@@ -79,6 +79,29 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(loaded[0].id, b.id)
             self.assertEqual(loaded[0].title, b.title)
 
+    def test_first_prompt_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bookmarks.json"
+            b = make_bookmark(first_prompt="Full first prompt text here")
+            save_bookmarks([b], path)
+            loaded = load_bookmarks(path)
+            self.assertEqual(loaded[0].first_prompt, "Full first prompt text here")
+
+    def test_first_prompt_backward_compat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bookmarks.json"
+            path.write_text(json.dumps({"version": 1, "bookmarks": [{
+                "id": "aweshelf_0001",
+                "provider": "claude",
+                "session_id": "s1",
+                "title": "Old bookmark",
+                "category": "",
+                "project_path": "/tmp",
+            }]}))
+            loaded = load_bookmarks(path)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].first_prompt, "")
+
     def test_save_sets_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bookmarks.json"

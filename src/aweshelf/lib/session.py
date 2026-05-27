@@ -30,21 +30,26 @@ def _truncate(text: str, limit: int = 80) -> str:
     return text
 
 
-def extract_title_from_messages(messages: list[dict]) -> str | None:
+def extract_first_prompt(messages: list[dict]) -> str:
+    """Extract full, cleaned first user message."""
     for msg in messages:
         content = msg.get("content", "")
         if isinstance(content, str) and content.strip():
             text = clean_title(content)
-            if not text:
-                continue
-            return _truncate(text)
+            if text:
+                return text
         if isinstance(content, list):
             for part in content:
                 if isinstance(part, dict) and part.get("type") == "text":
                     text = clean_title(part.get("text", ""))
                     if text:
-                        return _truncate(text)
-    return None
+                        return text
+    return ""
+
+
+def extract_title_from_messages(messages: list[dict]) -> str | None:
+    first = extract_first_prompt(messages)
+    return _truncate(first) if first else None
 
 
 def _parse_jsonl(
@@ -82,10 +87,12 @@ def _parse_jsonl(
         state["session_id"] = jsonl_path.stem
 
     title = extract_title_from_messages(state["user_contents"]) or "Untitled session"
+    first_prompt = extract_first_prompt(state["user_contents"])
 
     return {
         "session_id": state["session_id"],
         "title": title,
+        "first_prompt": first_prompt,
         "model": state["model"],
         "project_path": state["project_path"] or "",
         "created_at": state["created_at"],

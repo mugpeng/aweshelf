@@ -59,6 +59,7 @@ def run_bookmark(
         source_path = session.get("source_path", "")
         provider = session.get("provider", "claude")
         auto_title = session.get("title", "")
+        first_prompt = session.get("first_prompt", "")
         project_path = session.get("project_path", "")
     elif session_id is None:
         session = find_recent_session()
@@ -68,15 +69,17 @@ def run_bookmark(
         source_path = session.get("source_path", "")
         provider = session.get("provider", "claude")
         auto_title = session.get("title", "")
+        first_prompt = session.get("first_prompt", "")
         project_path = session.get("project_path", "")
     else:
         source_path = ""
         provider = "claude"
         auto_title = ""
+        first_prompt = ""
         project_path = ""
 
     if title is None:
-        title = auto_title or "Untitled session"
+        title = auto_title or first_prompt[:80] or "Untitled session"
 
     if interactive and category is None:
         cats = list_categories(path)
@@ -105,6 +108,7 @@ def run_bookmark(
         title=title,
         category=category,
         project_path=project_path,
+        first_prompt=first_prompt,
         aweswitch_profile=profile,
     )
 

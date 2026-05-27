@@ -1,5 +1,6 @@
 """TUI browse app using textual."""
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -15,6 +16,7 @@ MIN_FRAC = 10
 CATEGORY_COLORS = ["green", "orange", "red", "cyan", "magenta"]
 MODE_ORDER = ["all", "category"]
 SORT_ORDER = ["cat_id", "id"]
+CAT_KEY_PREFIX = "__cat__"
 
 EDIT_FIELDS = [
     ("title", "Title"),
@@ -225,13 +227,6 @@ class BookmarkBrowser(App):
     #search.visible {
         display: block;
     }
-    #grouped {
-        height: 1fr;
-    }
-    .cat-header {
-        padding: 0 1;
-        text-style: bold;
-    }
     #detail {
         width: 40fr;
         padding: 1 2;
@@ -260,8 +255,6 @@ class BookmarkBrowser(App):
         with Horizontal():
             with Vertical(id="sidebar"):
                 yield Input(placeholder="Filter bookmarks...", id="search")
-                with Vertical(id="grouped"):
-                    pass
                 yield DataTable(id="table")
             yield DragHandle()
             with Vertical(id="detail"):
@@ -271,7 +264,7 @@ class BookmarkBrowser(App):
 
     def on_mount(self) -> None:
         table = self.query_one("#table", DataTable)
-        table.add_columns("ID", "PROVIDER", "TITLE", "CATEGORY", "PROFILE")
+        table.add_columns("PROVIDER", "TITLE", "PROFILE")
         table.cursor_type = "row"
         self._load_data()
 
@@ -284,6 +277,7 @@ class BookmarkBrowser(App):
             or f in b.category.lower()
             or f in b.session_id.lower()
             or f in b.project_path.lower()
+            or f in b.first_prompt.lower()
             or (b.aweswitch_profile and f in b.aweswitch_profile.lower())
         )
 
@@ -292,17 +286,13 @@ class BookmarkBrowser(App):
         visible = [b for b in self._bookmarks if self._matches_filter(b)]
         visible = self._sort_bookmarks(visible)
 
-        grouped = self.query_one("#grouped")
-        flat = self.query_one("#table")
+        table = self.query_one("#table", DataTable)
+        table.clear()
 
         if self._mode == "category":
-            flat.display = False
-            grouped.display = True
-            self._render_grouped(visible)
+            self._render_grouped(table, visible)
         else:
-            grouped.display = False
-            flat.display = True
-            self._render_flat(visible)
+            self._render_flat(table, visible)
 
     def _sort_bookmarks(self, bookmarks: list[Bookmark]) -> list[Bookmark]:
         if self._sort_order == "cat_id":
@@ -314,25 +304,22 @@ class BookmarkBrowser(App):
         self.query_one("#detail-title", Static).update(msg)
         self.query_one("#detail-body", Static).update(self.HELP_TEXT)
 
-    def _render_flat(self, visible: list[Bookmark]) -> None:
-        table = self.query_one("#table", DataTable)
-        table.clear()
+    def _add_bookmark_row(self, table: DataTable, b: Bookmark) -> None:
+        table.add_row(
+            b.provider,
+            b.title[:50] + ("..." if len(b.title) > 50 else ""),
+            b.aweswitch_profile or "-",
+            key=b.id,
+        )
+
+    def _render_flat(self, table: DataTable, visible: list[Bookmark]) -> None:
         if not visible:
             self._empty_state()
             return
         for b in visible:
-            table.add_row(
-                b.id,
-                b.provider,
-                b.title[:50] + ("..." if len(b.title) > 50 else ""),
-                b.category or "-",
-                b.aweswitch_profile or "-",
-                key=b.id,
-            )
+            self._add_bookmark_row(table, b)
 
-    def _render_grouped(self, visible: list[Bookmark]) -> None:
-        grouped = self.query_one("#grouped")
-        grouped.remove_children()
+    def _render_grouped(self, table: DataTable, visible: list[Bookmark]) -> None:
         if not visible:
             self._empty_state()
             return
@@ -344,35 +331,27 @@ class BookmarkBrowser(App):
 
         for i, cat in enumerate(sorted(categories)):
             color = CATEGORY_COLORS[i % len(CATEGORY_COLORS)]
-            header = Static(f" {cat}", classes="cat-header")
-            header.styles.color = color
-            grouped.mount(header)
-            dt = DataTable()
-            dt.add_columns("ID", "PROVIDER", "TITLE", "PROFILE")
-            dt.cursor_type = "row"
+            header = Text(f" {cat}", style=f"bold {color}")
+            table.add_row(header, "", "", key=f"{CAT_KEY_PREFIX}{cat}")
             for b in categories[cat]:
-                dt.add_row(
-                    b.id,
-                    b.provider,
-                    b.title[:50] + ("..." if len(b.title) > 50 else ""),
-                    b.aweswitch_profile or "-",
-                    key=b.id,
-                )
-            grouped.mount(dt)
+                self._add_bookmark_row(table, b)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "search":
             self._filter = event.value.lower()
             self._load_data()
 
+    def _is_cat_row(self, key) -> bool:
+        return key is not None and str(key).startswith(CAT_KEY_PREFIX)
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if self._dragging:
+        if self._dragging or self._is_cat_row(event.row_key.value):
             return
         self._select_bookmark(event.row_key.value)
         self.action_resume()
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        if self._dragging or event.row_key is None:
+        if self._dragging or event.row_key is None or self._is_cat_row(event.row_key.value):
             return
         self._select_bookmark(event.row_key.value)
 
@@ -384,9 +363,10 @@ class BookmarkBrowser(App):
                 break
 
     def _update_detail(self, b: Bookmark) -> None:
-        self.query_one("#detail-title", Static).update(f" {b.title}")
+        self.query_one("#detail-title", Static).update(f" {b.id}")
         lines = [
-            f"ID:        {b.id}",
+            f"Title:     {b.title}",
+            f"Prompt:    {b.first_prompt or '-'}",
             f"Provider:  {b.provider}",
             f"Session:   {b.session_id}",
             f"Category:  {b.category or '-'}",
@@ -418,7 +398,6 @@ class BookmarkBrowser(App):
             if result:
                 update_bookmark(self._selected.id, **result)
                 self._load_data()
-                # Re-select the updated bookmark
                 for b in self._bookmarks:
                     if b.id == self._selected.id:
                         self._selected = b
