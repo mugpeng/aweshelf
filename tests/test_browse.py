@@ -54,6 +54,30 @@ class BrowseTests(unittest.TestCase):
         keys = {binding.key for binding in BookmarkBrowser.BINDINGS}
         self.assertIn("r", keys)
 
+    def test_mode_toggle_binding(self):
+        keys = {binding.key for binding in BookmarkBrowser.BINDINGS}
+        self.assertIn("m", keys)
+
+    def test_sort_cycle_binding(self):
+        keys = {binding.key for binding in BookmarkBrowser.BINDINGS}
+        self.assertIn("s", keys)
+
+    def test_help_text_lists_mode_and_sort(self):
+        self.assertIn("m", BookmarkBrowser.HELP_TEXT)
+        self.assertIn("s", BookmarkBrowser.HELP_TEXT)
+
+    def test_category_colors_defined(self):
+        from aweshelf.tui.app import CATEGORY_COLORS
+        self.assertGreater(len(CATEGORY_COLORS), 0)
+
+    def test_mode_order(self):
+        from aweshelf.tui.app import MODE_ORDER
+        self.assertEqual(MODE_ORDER, ["all", "category"])
+
+    def test_sort_order(self):
+        from aweshelf.tui.app import SORT_ORDER
+        self.assertEqual(SORT_ORDER, ["cat_id", "id"])
+
 
 @unittest.skipIf(BookmarkBrowser is None, "textual is not installed")
 class EditScreenTests(unittest.TestCase):

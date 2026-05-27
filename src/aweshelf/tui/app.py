@@ -12,6 +12,9 @@ from aweshelf.types import Bookmark
 SIDEBAR_FRAC = 60
 DETAIL_FRAC = 40
 MIN_FRAC = 10
+CATEGORY_COLORS = ["$success", "$warning", "$error", "$accent", "$secondary"]
+MODE_ORDER = ["all", "category"]
+SORT_ORDER = ["cat_id", "id"]
 
 EDIT_FIELDS = [
     ("title", "Title"),
@@ -185,6 +188,8 @@ class BookmarkBrowser(App):
         "Enter  Resume selected bookmark",
         "e      Edit bookmark",
         "r      Remove bookmark",
+        "m      Toggle All / Category mode",
+        "s      Cycle sort order",
         "?      Show this help",
         "q      Quit",
         "[ / ]  Shrink / grow sidebar",
@@ -195,6 +200,8 @@ class BookmarkBrowser(App):
         Binding("q", "quit", "Quit"),
         Binding("e", "edit", "Edit"),
         Binding("r", "remove", "Remove"),
+        Binding("m", "toggle_mode", "Mode"),
+        Binding("s", "cycle_sort", "Sort"),
         Binding("question_mark", "help", "Help", show=False),
         Binding("slash", "focus_search", "Filter", show=False),
         Binding("escape", "clear_search", "Clear", show=False),
@@ -218,6 +225,13 @@ class BookmarkBrowser(App):
     #search.visible {
         display: block;
     }
+    #grouped {
+        height: 1fr;
+    }
+    .cat-header {
+        padding: 0 1;
+        text-style: bold;
+    }
     #detail {
         width: 40fr;
         padding: 1 2;
@@ -234,6 +248,8 @@ class BookmarkBrowser(App):
         self._bookmarks: list[Bookmark] = []
         self._selected: Bookmark | None = None
         self._filter: str = ""
+        self._mode: str = MODE_ORDER[0]
+        self._sort_order: str = SORT_ORDER[0]
         self._dragging: bool = False
         self._drag_start_x: int = 0
         self._drag_start_sidebar: int = SIDEBAR_FRAC
@@ -244,6 +260,8 @@ class BookmarkBrowser(App):
         with Horizontal():
             with Vertical(id="sidebar"):
                 yield Input(placeholder="Filter bookmarks...", id="search")
+                with Vertical(id="grouped"):
+                    pass
                 yield DataTable(id="table")
             yield DragHandle()
             with Vertical(id="detail"):
@@ -256,10 +274,6 @@ class BookmarkBrowser(App):
         table.add_columns("ID", "PROVIDER", "TITLE", "CATEGORY", "PROFILE")
         table.cursor_type = "row"
         self._load_data()
-        if self._bookmarks:
-            first = self._bookmarks[0]
-            self._selected = first
-            self._update_detail(first)
 
     def _matches_filter(self, b: Bookmark) -> bool:
         if not self._filter:
@@ -274,14 +288,37 @@ class BookmarkBrowser(App):
         )
 
     def _load_data(self) -> None:
-        table = self.query_one("#table", DataTable)
-        table.clear()
         self._bookmarks = load_bookmarks()
         visible = [b for b in self._bookmarks if self._matches_filter(b)]
+        visible = self._sort_bookmarks(visible)
+
+        grouped = self.query_one("#grouped")
+        flat = self.query_one("#table")
+
+        if self._mode == "category":
+            flat.display = False
+            grouped.display = True
+            self._render_grouped(visible)
+        else:
+            grouped.display = False
+            flat.display = True
+            self._render_flat(visible)
+
+    def _sort_bookmarks(self, bookmarks: list[Bookmark]) -> list[Bookmark]:
+        if self._sort_order == "cat_id":
+            return sorted(bookmarks, key=lambda b: (b.category or "", b.id))
+        return sorted(bookmarks, key=lambda b: b.id)
+
+    def _empty_state(self) -> None:
+        msg = self.EMPTY_MESSAGE if not self._bookmarks else "No matches."
+        self.query_one("#detail-title", Static).update(msg)
+        self.query_one("#detail-body", Static).update(self.HELP_TEXT)
+
+    def _render_flat(self, visible: list[Bookmark]) -> None:
+        table = self.query_one("#table", DataTable)
+        table.clear()
         if not visible:
-            msg = self.EMPTY_MESSAGE if not self._bookmarks else "No matches."
-            self.query_one("#detail-title", Static).update(msg)
-            self.query_one("#detail-body", Static).update(self.HELP_TEXT)
+            self._empty_state()
             return
         for b in visible:
             table.add_row(
@@ -293,6 +330,36 @@ class BookmarkBrowser(App):
                 key=b.id,
             )
 
+    def _render_grouped(self, visible: list[Bookmark]) -> None:
+        grouped = self.query_one("#grouped")
+        grouped.remove_children()
+        if not visible:
+            self._empty_state()
+            return
+
+        categories: dict[str, list[Bookmark]] = {}
+        for b in visible:
+            cat = b.category or "uncategorized"
+            categories.setdefault(cat, []).append(b)
+
+        for i, cat in enumerate(sorted(categories)):
+            color = CATEGORY_COLORS[i % len(CATEGORY_COLORS)]
+            header = Static(f" {cat}", classes="cat-header")
+            header.styles.color = color
+            grouped.mount(header)
+            dt = DataTable()
+            dt.add_columns("ID", "PROVIDER", "TITLE", "PROFILE")
+            dt.cursor_type = "row"
+            for b in categories[cat]:
+                dt.add_row(
+                    b.id,
+                    b.provider,
+                    b.title[:50] + ("..." if len(b.title) > 50 else ""),
+                    b.aweswitch_profile or "-",
+                    key=b.id,
+                )
+            grouped.mount(dt)
+
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "search":
             self._filter = event.value.lower()
@@ -301,18 +368,15 @@ class BookmarkBrowser(App):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if self._dragging:
             return
-        bookmark_id = event.row_key.value
-        for b in self._bookmarks:
-            if b.id == bookmark_id:
-                self._selected = b
-                self._update_detail(b)
-                self.action_resume()
-                return
+        self._select_bookmark(event.row_key.value)
+        self.action_resume()
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if self._dragging or event.row_key is None:
             return
-        bookmark_id = event.row_key.value
+        self._select_bookmark(event.row_key.value)
+
+    def _select_bookmark(self, bookmark_id: str) -> None:
         for b in self._bookmarks:
             if b.id == bookmark_id:
                 self._selected = b
@@ -335,6 +399,16 @@ class BookmarkBrowser(App):
     def action_resume(self) -> None:
         if self._selected:
             self.exit(result=self._selected)
+
+    def action_toggle_mode(self) -> None:
+        idx = MODE_ORDER.index(self._mode)
+        self._mode = MODE_ORDER[(idx + 1) % len(MODE_ORDER)]
+        self._load_data()
+
+    def action_cycle_sort(self) -> None:
+        idx = SORT_ORDER.index(self._sort_order)
+        self._sort_order = SORT_ORDER[(idx + 1) % len(SORT_ORDER)]
+        self._load_data()
 
     def action_edit(self) -> None:
         if not self._selected:
