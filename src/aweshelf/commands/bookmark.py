@@ -19,10 +19,10 @@ def pick_session(sessions: list[dict], limit: int = DEFAULT_LIST_LIMIT) -> dict:
     shown = sessions[:limit]
     total = len(sessions)
 
-    click.echo(f"Sessions in current project ({total} total")
     if total > limit:
-        click.echo(f", showing {limit} — use --verbose for all")
-    click.echo("):\n")
+        click.echo(f"Sessions in current project ({total} total, showing {limit} \u2014 use --verbose for all):\n")
+    else:
+        click.echo(f"Sessions in current project ({total} total):\n")
 
     for i, s in enumerate(shown, 1):
         title = s.get("title", "Untitled")

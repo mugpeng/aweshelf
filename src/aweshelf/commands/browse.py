@@ -2,7 +2,7 @@
 
 import click
 
-from aweshelf.lib.resume import build_resume_target, format_resume_target, run_resume_target
+from aweshelf.lib.resume_target import execute_resume
 
 
 @click.command("browse")
@@ -17,15 +17,4 @@ def browse_command():
     result = app.run()
 
     if result is not None:
-        target = build_resume_target(result)
-
-        if target.warning:
-            click.echo(f"Warning: {target.warning}", err=True)
-        click.echo(f"Resuming {result.id} — {result.title}")
-        click.echo(f"  $ {format_resume_target(target)}")
-        try:
-            run_resume_target(target)
-        except FileNotFoundError:
-            raise click.ClickException(f"command not found: {target.argv[0]}")
-        except OSError as exc:
-            raise click.ClickException(f"failed to run {target.argv[0]}: {exc}")
+        execute_resume(result)

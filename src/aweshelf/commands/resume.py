@@ -2,7 +2,7 @@
 
 import click
 
-from aweshelf.lib.resume import (
+from aweshelf.lib.resume_target import (
     ResumeError,
     build_resume_target,
     format_resume_target,

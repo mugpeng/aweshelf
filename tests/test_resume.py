@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from aweshelf.lib.resume import ResumeTarget, build_resume_target, format_resume_target, run_resume_target
+from aweshelf.lib.resume_target import ResumeTarget, build_resume_target, format_resume_target, run_resume_target
 from aweshelf.types import Bookmark
 
 

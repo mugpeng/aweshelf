@@ -45,52 +45,34 @@ def find_all_sessions() -> list[dict]:
     return find_claude_sessions() + find_codex_sessions()
 
 
+def _filter_project_sessions(sessions: list[dict], project_path: str) -> list[dict]:
+    """Filter sessions matching project_path, fall back to all sessions."""
+    project_sessions = []
+    for s in sessions:
+        pp = s.get("project_path", "")
+        if pp and (project_path.startswith(pp) or pp.startswith(project_path)):
+            project_sessions.append(s)
+    return project_sessions or sessions
+
+
+def _sort_by_mtime(sessions: list[dict]) -> list[dict]:
+    """Sort sessions by file modification time, newest first."""
+    def get_mtime(s):
+        sp = s.get("source_path", "")
+        try:
+            return os.path.getmtime(sp)
+        except OSError:
+            return 0
+    return sorted(sessions, key=get_mtime, reverse=True)
+
+
 def find_project_sessions(project_path: Optional[str] = None) -> list[dict]:
     cwd = project_path or os.getcwd()
     sessions = find_all_sessions()
-
-    project_sessions = []
-    for s in sessions:
-        pp = s.get("project_path", "")
-        if pp and (cwd.startswith(pp) or pp.startswith(cwd)):
-            project_sessions.append(s)
-
-    if not project_sessions:
-        project_sessions = sessions
-
-    def get_mtime(s):
-        sp = s.get("source_path", "")
-        try:
-            return os.path.getmtime(sp)
-        except OSError:
-            return 0
-
-    project_sessions.sort(key=get_mtime, reverse=True)
-    return project_sessions
+    filtered = _filter_project_sessions(sessions, cwd)
+    return _sort_by_mtime(filtered)
 
 
 def find_recent_session(project_path: Optional[str] = None) -> Optional[dict]:
-    cwd = project_path or os.getcwd()
-    sessions = find_all_sessions()
-
-    project_sessions = []
-    for s in sessions:
-        pp = s.get("project_path", "")
-        if pp and (cwd.startswith(pp) or pp.startswith(cwd)):
-            project_sessions.append(s)
-
-    if not project_sessions:
-        project_sessions = sessions
-
-    if not project_sessions:
-        return None
-
-    def get_mtime(s):
-        sp = s.get("source_path", "")
-        try:
-            return os.path.getmtime(sp)
-        except OSError:
-            return 0
-
-    project_sessions.sort(key=get_mtime, reverse=True)
-    return project_sessions[0]
+    sessions = find_project_sessions(project_path)
+    return sessions[0] if sessions else None

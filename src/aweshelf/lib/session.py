@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 TAG_RE = re.compile(r"<[^>]+>")
 
@@ -47,13 +47,20 @@ def extract_title_from_messages(messages: list[dict]) -> Optional[str]:
     return None
 
 
-def parse_claude_session(jsonl_path: Path, max_lines: int = 80) -> dict:
-    """Parse Claude Code session JSONL."""
-    user_contents = []
-    session_id = None
-    model = None
-    project_path = None
-    created_at = None
+def _parse_jsonl(
+    jsonl_path: Path,
+    extract_fields: Callable[[dict, dict], None],
+    provider: str,
+    max_lines: int = 80,
+) -> dict:
+    """Shared JSONL parser. extract_fields(entry, state) mutates state per entry."""
+    state = {
+        "session_id": None,
+        "project_path": None,
+        "model": None,
+        "created_at": None,
+        "user_contents": [],
+    }
 
     try:
         with open(jsonl_path, "r") as f:
@@ -67,122 +74,101 @@ def parse_claude_session(jsonl_path: Path, max_lines: int = 80) -> dict:
                     entry = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-
-                entry_type = entry.get("type", "")
-
-                if not session_id:
-                    if entry_type == "permission-mode":
-                        session_id = entry.get("sessionId")
-                    elif entry_type == "summary":
-                        session_id = entry.get("sessionId") or entry.get("summary", {}).get("sessionId")
-
-                if not project_path:
-                    if entry_type == "summary":
-                        project_path = entry.get("cwd") or entry.get("summary", {}).get("cwd")
-                    elif entry_type == "user":
-                        cwd = entry.get("cwd")
-                        if cwd:
-                            project_path = cwd
-
-                if entry_type == "user":
-                    msg = entry.get("message", {})
-                    content = msg.get("content", "")
-                    if content:
-                        user_contents.append({"content": content})
-                if entry.get("role") == "user":
-                    content = entry.get("content", "")
-                    if content:
-                        user_contents.append({"content": content})
-
-                if not model:
-                    if entry_type == "assistant":
-                        msg = entry.get("message", {})
-                        model = msg.get("model", "")
-                    elif entry.get("role") == "assistant":
-                        model = entry.get("model", "")
-
-                if not created_at:
-                    ts = entry.get("timestamp")
-                    if ts:
-                        created_at = ts
+                extract_fields(entry, state)
     except (OSError, FileNotFoundError):
         pass
 
-    if not session_id:
-        session_id = jsonl_path.stem
+    if not state["session_id"]:
+        state["session_id"] = jsonl_path.stem
 
-    title = extract_title_from_messages(user_contents) or "Untitled session"
+    title = extract_title_from_messages(state["user_contents"]) or "Untitled session"
 
     return {
-        "session_id": session_id,
+        "session_id": state["session_id"],
         "title": title,
-        "model": model,
-        "project_path": project_path or "",
-        "created_at": created_at,
-        "provider": "claude",
+        "model": state["model"],
+        "project_path": state["project_path"] or "",
+        "created_at": state["created_at"],
+        "provider": provider,
     }
+
+
+def _extract_claude_fields(entry: dict, state: dict) -> None:
+    """Extract fields from a Claude Code JSONL entry."""
+    entry_type = entry.get("type", "")
+
+    if not state["session_id"]:
+        if entry_type == "permission-mode":
+            state["session_id"] = entry.get("sessionId")
+        elif entry_type == "summary":
+            state["session_id"] = entry.get("sessionId") or entry.get("summary", {}).get("sessionId")
+
+    if not state["project_path"]:
+        if entry_type == "summary":
+            state["project_path"] = entry.get("cwd") or entry.get("summary", {}).get("cwd")
+        elif entry_type == "user":
+            cwd = entry.get("cwd")
+            if cwd:
+                state["project_path"] = cwd
+
+    if entry_type == "user":
+        msg = entry.get("message", {})
+        content = msg.get("content", "")
+        if content:
+            state["user_contents"].append({"content": content})
+    if entry.get("role") == "user":
+        content = entry.get("content", "")
+        if content:
+            state["user_contents"].append({"content": content})
+
+    if not state["model"]:
+        if entry_type == "assistant":
+            msg = entry.get("message", {})
+            state["model"] = msg.get("model", "")
+        elif entry.get("role") == "assistant":
+            state["model"] = entry.get("model", "")
+
+    if not state["created_at"]:
+        ts = entry.get("timestamp")
+        if ts:
+            state["created_at"] = ts
+
+
+def _extract_codex_fields(entry: dict, state: dict) -> None:
+    """Extract fields from a Codex CLI JSONL entry."""
+    entry_type = entry.get("type", "")
+    payload = entry.get("payload", {})
+
+    if entry_type == "session_meta":
+        state["session_id"] = state["session_id"] or payload.get("id")
+        state["project_path"] = state["project_path"] or payload.get("cwd")
+        if not state["created_at"]:
+            state["created_at"] = payload.get("timestamp")
+
+    if entry_type == "event_msg":
+        payload_type = payload.get("type", "")
+        if payload_type == "user_message":
+            msg = payload.get("message", "")
+            if msg:
+                state["user_contents"].append({"content": msg})
+        if not state["created_at"]:
+            ts = entry.get("timestamp")
+            if ts:
+                state["created_at"] = ts
+
+    if entry_type == "response_item":
+        if not state["model"]:
+            state["model"] = entry.get("model", "")
+
+
+def parse_claude_session(jsonl_path: Path, max_lines: int = 80) -> dict:
+    """Parse Claude Code session JSONL."""
+    return _parse_jsonl(jsonl_path, _extract_claude_fields, "claude", max_lines)
 
 
 def parse_codex_session(jsonl_path: Path, max_lines: int = 80) -> dict:
     """Parse Codex CLI session JSONL."""
-    user_contents = []
-    session_id = None
-    model = None
-    project_path = None
-    created_at = None
-
-    try:
-        with open(jsonl_path, "r") as f:
-            for i, line in enumerate(f):
-                if i >= max_lines:
-                    break
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                entry_type = entry.get("type", "")
-                payload = entry.get("payload", {})
-
-                if entry_type == "session_meta":
-                    session_id = session_id or payload.get("id")
-                    project_path = project_path or payload.get("cwd")
-                    if not created_at:
-                        created_at = payload.get("timestamp")
-
-                if entry_type == "event_msg":
-                    payload_type = payload.get("type", "")
-                    if payload_type == "user_message":
-                        msg = payload.get("message", "")
-                        if msg:
-                            user_contents.append({"content": msg})
-                    if not created_at:
-                        ts = entry.get("timestamp")
-                        if ts:
-                            created_at = ts
-
-                if entry_type == "response_item":
-                    if not model:
-                        model = entry.get("model", "")
-    except (OSError, FileNotFoundError):
-        pass
-
-    if not session_id:
-        session_id = jsonl_path.stem
-
-    title = extract_title_from_messages(user_contents) or "Untitled session"
-
-    return {
-        "session_id": session_id,
-        "title": title,
-        "model": model,
-        "project_path": project_path or "",
-        "created_at": created_at,
-        "provider": "codex",
-    }
+    return _parse_jsonl(jsonl_path, _extract_codex_fields, "codex", max_lines)
 
 
 def parse_session_meta(jsonl_path: Path, max_lines: int = 80) -> dict:
