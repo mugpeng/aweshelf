@@ -25,8 +25,7 @@ aweshelf 可以保存你常用的 Claude Code 和 Codex 会话，用分类标记
 ## 安装
 
 ```bash
-cd aweshelf
-pip install -e .
+pip install aweshelf
 ```
 
 ## 快速开始

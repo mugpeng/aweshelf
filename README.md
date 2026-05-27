@@ -25,8 +25,7 @@ aweshelf lets you save your favorite Claude Code and Codex sessions, tag them wi
 ## Install
 
 ```bash
-cd aweshelf
-pip install -e .
+pip install aweshelf
 ```
 
 ## Quick Start
