@@ -4,8 +4,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.screen import Screen
-from textual.widgets import Button, DataTable, Footer, Header, Input, Static
+from textual.widgets import DataTable, Footer, Header, Input, Static
 
 from aweshelf.lib.store import load_bookmarks, remove_bookmark, update_bookmark
 from aweshelf.types import Bookmark
@@ -17,6 +16,11 @@ CATEGORY_COLORS = ["green", "orange", "red", "cyan", "magenta"]
 MODE_ORDER = ["all", "category"]
 SORT_ORDER = ["cat_id", "id"]
 CAT_KEY_PREFIX = "__cat__"
+
+MODE_NORMAL = "normal"
+MODE_EDIT = "edit"
+MODE_CONFIRM_RESUME = "confirm_resume"
+MODE_CONFIRM_REMOVE = "confirm_remove"
 
 EDIT_FIELDS = [
     ("title", "Title"),
@@ -64,132 +68,18 @@ class DragHandle(Static):
             self.release_mouse()
 
 
-class EditScreen(Screen):
-    """Inline edit screen for bookmark fields."""
-
-    BINDINGS = [
-        Binding("escape", "cancel", "Cancel"),
-    ]
-
-    CSS = """
-    #edit-title {
-        text-style: bold;
-        color: $accent;
-        margin: 1 0;
-    }
-    #edit-fields {
-        height: auto;
-        margin: 1 0;
-    }
-    .edit-label {
-        color: $text-muted;
-        margin-top: 1;
-    }
-    #edit-actions {
-        height: auto;
-        margin-top: 1;
-    }
-    .btn {
-        min-width: 10;
-        margin-right: 1;
-    }
-    """
-
-    def __init__(self, bookmark: Bookmark):
-        super().__init__()
-        self._bookmark = bookmark
-        self._changes: dict[str, str] = {}
-
-    def compose(self) -> ComposeResult:
-        yield Static(f"Editing: {self._bookmark.title}", id="edit-title")
-        with Vertical(id="edit-fields"):
-            for attr, label in EDIT_FIELDS:
-                current = getattr(self._bookmark, attr) or ""
-                yield Static(f"{label}:", classes="edit-label")
-                yield Input(value=current, id=f"edit-{attr}", placeholder=f"Current: {current or '(empty)'}")
-        with Horizontal(id="edit-actions"):
-            yield Button("Save", variant="success", id="save-btn", classes="btn")
-            yield Button("Cancel", id="cancel-btn", classes="btn")
-        yield Footer()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "save-btn":
-            self._collect_and_save()
-        elif event.button.id == "cancel-btn":
-            self.dismiss()
-
-    def action_cancel(self) -> None:
-        self.dismiss()
-
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        self._collect_and_save()
-
-    def _collect_and_save(self) -> None:
-        for attr, _ in EDIT_FIELDS:
-            inp = self.query_one(f"#edit-{attr}", Input)
-            new_val = inp.value.strip()
-            old_val = getattr(self._bookmark, attr) or ""
-            if new_val and new_val != old_val:
-                self._changes[attr] = new_val
-        if not self._changes:
-            self.dismiss()
-            return
-        self.dismiss(self._changes)
-
-
-class ConfirmScreen(Screen):
-    """Confirmation prompt for destructive actions."""
-
-    BINDINGS = [
-        Binding("escape", "cancel", "No"),
-    ]
-
-    CSS = """
-    #confirm-msg {
-        margin: 1 0;
-        text-style: bold;
-    }
-    #confirm-actions {
-        height: auto;
-        margin-top: 1;
-    }
-    .btn {
-        min-width: 10;
-        margin-right: 1;
-    }
-    """
-
-    def __init__(self, message: str):
-        super().__init__()
-        self._message = message
-
-    def compose(self) -> ComposeResult:
-        yield Static(self._message, id="confirm-msg")
-        with Horizontal(id="confirm-actions"):
-            yield Button("Yes", variant="error", id="yes-btn", classes="btn")
-            yield Button("No", id="no-btn", classes="btn")
-        yield Footer()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "yes-btn":
-            self.dismiss(True)
-        elif event.button.id == "no-btn":
-            self.dismiss(False)
-
-    def action_cancel(self) -> None:
-        self.dismiss(False)
-
-
 class BookmarkBrowser(App):
     """Browse and select bookmarks."""
 
     EMPTY_MESSAGE = "No bookmarks found. Run aweshelf bookmark first."
     HELP_TEXT = "\n".join([
         "/      Filter bookmarks",
-        "Esc    Clear filter / return to table",
-        "Enter  Resume selected bookmark",
+        "Esc    Clear filter / cancel",
+        "Enter  Resume bookmark",
         "e      Edit bookmark",
         "r      Remove bookmark",
+        "y      Confirm action",
+        "n      Cancel action",
         "m      Toggle All / Category mode",
         "s      Cycle sort order",
         "?      Show this help",
@@ -198,7 +88,7 @@ class BookmarkBrowser(App):
     ])
 
     BINDINGS = [
-        Binding("enter", "resume", "Resume", show=False),
+        Binding("enter", "resume", "Resume", show=False, priority=True),
         Binding("q", "quit", "Quit"),
         Binding("e", "edit", "Edit"),
         Binding("r", "remove", "Remove"),
@@ -236,6 +126,19 @@ class BookmarkBrowser(App):
         color: $accent;
         margin-bottom: 1;
     }
+    .edit-field {
+        margin: 0 0 1 0;
+    }
+    .edit-label {
+        color: $text-muted;
+    }
+    .edit-input {
+        margin: 0 0 0 2;
+    }
+    .edit-hint {
+        color: $text-muted;
+        margin-top: 1;
+    }
     """
 
     def __init__(self):
@@ -245,6 +148,8 @@ class BookmarkBrowser(App):
         self._filter: str = ""
         self._mode: str = MODE_ORDER[0]
         self._sort_order: str = SORT_ORDER[0]
+        self._app_mode: str = MODE_NORMAL
+        self._edit_changes: dict[str, str] = {}
         self._dragging: bool = False
         self._drag_start_x: int = 0
         self._drag_start_sidebar: int = SIDEBAR_FRAC
@@ -267,6 +172,10 @@ class BookmarkBrowser(App):
         table.add_columns("PROVIDER", "TITLE", "PROFILE")
         table.cursor_type = "row"
         self._load_data()
+        table.focus()
+
+    def _is_normal(self) -> bool:
+        return self._app_mode == MODE_NORMAL
 
     def _matches_filter(self, b: Bookmark) -> bool:
         if not self._filter:
@@ -348,7 +257,8 @@ class BookmarkBrowser(App):
         if self._dragging or self._is_cat_row(event.row_key.value):
             return
         self._select_bookmark(event.row_key.value)
-        self.action_resume()
+        if self._is_normal():
+            self.action_resume()
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if self._dragging or event.row_key is None or self._is_cat_row(event.row_key.value):
@@ -359,7 +269,8 @@ class BookmarkBrowser(App):
         for b in self._bookmarks:
             if b.id == bookmark_id:
                 self._selected = b
-                self._update_detail(b)
+                if self._is_normal():
+                    self._update_detail(b)
                 break
 
     def _update_detail(self, b: Bookmark) -> None:
@@ -376,51 +287,185 @@ class BookmarkBrowser(App):
         ]
         self.query_one("#detail-body", Static).update("\n".join(lines))
 
+    # --- mode-gated actions ---
+
     def action_resume(self) -> None:
-        if self._selected:
+        if not self._selected or not self._is_normal():
+            return
+        self._app_mode = MODE_CONFIRM_RESUME
+        self._show_confirm_prompt()
+
+    def action_edit(self) -> None:
+        if not self._selected or not self._is_normal():
+            return
+        self._app_mode = MODE_EDIT
+        self._edit_changes = {}
+        self._show_edit_form()
+
+    def action_remove(self) -> None:
+        if not self._selected or not self._is_normal():
+            return
+        self._app_mode = MODE_CONFIRM_REMOVE
+        self._show_confirm_prompt()
+
+    # --- key dispatch for edit / confirm modes ---
+
+    def on_key(self, event) -> None:
+        key = event.key
+
+        if self._app_mode == MODE_EDIT:
+            if key == "escape":
+                self._edit_discard()
+                event.stop()
+            elif key == "enter":
+                self._edit_save()
+                event.stop()
+            return
+
+        if self._app_mode in (MODE_CONFIRM_RESUME, MODE_CONFIRM_REMOVE):
+            if key == "y":
+                self._confirm_execute()
+                event.stop()
+            elif key in ("n", "escape"):
+                self._confirm_cancel()
+                event.stop()
+            return
+
+        if key == "escape":
+            self.action_clear_search()
+            event.stop()
+
+    # --- confirm helpers ---
+
+    def _show_confirm_prompt(self) -> None:
+        b = self._selected
+        if not b:
+            return
+        title = self.query_one("#detail-title", Static)
+        body = self.query_one("#detail-body", Static)
+        if self._app_mode == MODE_CONFIRM_RESUME:
+            title.update("Resume this session?")
+            body.update(
+                f"Session: {b.session_id}\n"
+                f"Title:   {b.title}\n\n"
+                "[y] Resume  [n] Cancel"
+            )
+        elif self._app_mode == MODE_CONFIRM_REMOVE:
+            title.update("Remove this bookmark?")
+            body.update(
+                f"{b.id}: {b.title}\n\n"
+                "[y] Remove  [n] Cancel"
+            )
+
+    def _confirm_execute(self) -> None:
+        if not self._selected:
+            self._app_mode = MODE_NORMAL
+            return
+        if self._app_mode == MODE_CONFIRM_RESUME:
+            self._app_mode = MODE_NORMAL
             self.exit(result=self._selected)
+            return
+        if self._app_mode == MODE_CONFIRM_REMOVE:
+            remove_bookmark(self._selected.id)
+            self._selected = None
+            self._app_mode = MODE_NORMAL
+            self.query_one("#detail-title", Static).update("Removed")
+            self.query_one("#detail-body", Static).update("")
+            self._load_data()
+
+    def _confirm_cancel(self) -> None:
+        self._app_mode = MODE_NORMAL
+        if self._selected:
+            self._update_detail(self._selected)
+
+    # --- edit helpers ---
+
+    def _show_edit_form(self) -> None:
+        b = self._selected
+        if not b:
+            return
+        title = self.query_one("#detail-title", Static)
+        body = self.query_one("#detail-body", Static)
+        title.update(f"Editing: {b.title}")
+        lines = []
+        for attr, label in EDIT_FIELDS:
+            current = getattr(b, attr) or ""
+            lines.append(f"{label}: {current}")
+        lines.append("")
+        lines.append("Enter: save | Esc: discard")
+        body.update("\n".join(lines))
+        first_input = self._mount_edit_inputs(b)
+        if first_input:
+            first_input.focus()
+
+    def _mount_edit_inputs(self, b: Bookmark) -> Input | None:
+        detail = self.query_one("#detail")
+        for widget in list(detail.query(".edit-field")):
+            widget.remove()
+        for widget in list(detail.query(".edit-hint")):
+            widget.remove()
+        first_input = None
+        for attr, label in EDIT_FIELDS:
+            current = getattr(b, attr) or ""
+            row = Horizontal(classes="edit-field")
+            row.mount(Static(f"{label}:", classes="edit-label"))
+            inp = Input(
+                value=current,
+                placeholder=f"Current: {current or '(empty)'}",
+                id=f"edit-{attr}",
+                classes="edit-input",
+            )
+            row.mount(inp)
+            detail.mount(row)
+            if first_input is None:
+                first_input = inp
+        return first_input
+
+    def _edit_save(self) -> None:
+        if not self._selected:
+            self._app_mode = MODE_NORMAL
+            return
+        for attr, _ in EDIT_FIELDS:
+            try:
+                inp = self.query_one(f"#edit-{attr}", Input)
+                new_val = inp.value.strip()
+                old_val = getattr(self._selected, attr) or ""
+                if new_val and new_val != old_val:
+                    self._edit_changes[attr] = new_val
+            except Exception:
+                pass
+        if self._edit_changes:
+            update_bookmark(self._selected.id, **self._edit_changes)
+            self._load_data()
+            for b in self._bookmarks:
+                if b.id == self._selected.id:
+                    self._selected = b
+                    break
+        self._app_mode = MODE_NORMAL
+        if self._selected:
+            self._update_detail(self._selected)
+
+    def _edit_discard(self) -> None:
+        self._edit_changes = {}
+        self._app_mode = MODE_NORMAL
+        if self._selected:
+            self._update_detail(self._selected)
+
+    # --- unconditional actions ---
 
     def action_toggle_mode(self) -> None:
+        if not self._is_normal():
+            return
         idx = MODE_ORDER.index(self._mode)
         self._mode = MODE_ORDER[(idx + 1) % len(MODE_ORDER)]
         self._load_data()
 
     def action_cycle_sort(self) -> None:
+        if not self._is_normal():
+            return
         idx = SORT_ORDER.index(self._sort_order)
         self._sort_order = SORT_ORDER[(idx + 1) % len(SORT_ORDER)]
         self._load_data()
-
-    def action_edit(self) -> None:
-        if not self._selected:
-            return
-
-        def on_edit_result(result) -> None:
-            if result:
-                update_bookmark(self._selected.id, **result)
-                self._load_data()
-                for b in self._bookmarks:
-                    if b.id == self._selected.id:
-                        self._selected = b
-                        self._update_detail(b)
-                        break
-
-        self.push_screen(EditScreen(self._selected), on_edit_result)
-
-    def action_remove(self) -> None:
-        if not self._selected:
-            return
-        b = self._selected
-
-        def on_confirm(result) -> None:
-            if result:
-                remove_bookmark(b.id)
-                self._selected = None
-                self.query_one("#detail-title", Static).update(f"Removed {b.id}")
-                self.query_one("#detail-body", Static).update("")
-                self._load_data()
-
-        msg = f"Remove bookmark {b.id} ({b.title})?"
-        self.push_screen(ConfirmScreen(msg), on_confirm)
 
     def action_resize_sidebar(self, delta: int) -> None:
         total = SIDEBAR_FRAC + DETAIL_FRAC
