@@ -58,11 +58,11 @@ Install the aweshelf skill (see [Install](#install) above), then just tell your 
 
 > "List my bookmarks in the backend category."
 
-> "Resume bookmark aweshelf_0003."
-
 > "Search for bookmarks related to auth."
 
 The agent uses the [SKILL.md](resources/skills/aweshelf/SKILL.md) to understand all available commands and workflows.
+
+> **Tip:** Resuming a session (`aweshelf resume`) launches a new agent process, which may conflict with the current one. For resuming, it's best to exit the agent first and use `aweshelf browse` or `aweshelf resume` directly in your terminal.
 
 ### Human
 
