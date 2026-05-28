@@ -47,6 +47,10 @@ The agent will first install the `aweshelf` CLI, then choose one of two skill ma
 pip install aweshelf
 ```
 
+## Extensions
+
+- **[aweshelf-extension/vscode](https://github.com/Webioinfo01/aweshelf-extension/tree/main/vscode)** — VS Code extension for browsing, searching, and resuming bookmarks from the sidebar. Install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf) or download the [.vsix](https://github.com/Webioinfo01/aweshelf-extension/releases).
+
 ### Optional: aweswitch
 
 aweshelf saves the active aweswitch profile when you bookmark a session. Install [aweswitch](https://github.com/mugpeng/aweswitch) to enable multi-profile management — without it, aweshelf works but profile restore on resume is skipped.
