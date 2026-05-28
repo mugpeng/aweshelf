@@ -1,8 +1,14 @@
 """List, search, recent commands."""
 
+import json
+
 import click
 
 from aweshelf.lib.store import filter_bookmarks, load_bookmarks
+
+
+def format_json(bookmarks: list) -> str:
+    return json.dumps([b.to_dict() for b in bookmarks], indent=2, ensure_ascii=False)
 
 
 def format_table(bookmarks: list) -> str:
@@ -43,7 +49,8 @@ def format_table(bookmarks: list) -> str:
 @click.option("-s", "--sort", "sort_by", type=click.Choice(["id", "recent"]), default="id",
               help="Sort order (default: id).")
 @click.option("-n", "--limit", default=0, type=int, help="Max rows to show (0 = all).")
-def list_command(category, provider, sort_by, limit):
+@click.option("--json", "as_json", is_flag=True, help="Output as raw JSON.")
+def list_command(category, provider, sort_by, limit, as_json):
     """List all bookmarks."""
     bookmarks = load_bookmarks()
     if category:
@@ -54,22 +61,25 @@ def list_command(category, provider, sort_by, limit):
         bookmarks.sort(key=lambda b: b.bookmarked_at, reverse=True)
     if limit > 0:
         bookmarks = bookmarks[:limit]
-    click.echo(format_table(bookmarks))
+    click.echo(format_json(bookmarks) if as_json else format_table(bookmarks))
 
 
 @click.command("search")
 @click.argument("query")
-def search_command(query):
+@click.option("--json", "as_json", is_flag=True, help="Output as raw JSON.")
+def search_command(query, as_json):
     """Search bookmarks by title, category, session ID, project, or profile."""
     bookmarks = load_bookmarks()
     results = filter_bookmarks(bookmarks, query)
-    click.echo(format_table(results))
+    click.echo(format_json(results) if as_json else format_table(results))
 
 
 @click.command("recent", hidden=True)
 @click.option("-n", "--count", default=10, help="Number of recent bookmarks.")
-def recent_command(count):
+@click.option("--json", "as_json", is_flag=True, help="Output as raw JSON.")
+def recent_command(count, as_json):
     """Show recently bookmarked sessions (alias for: list --sort recent -n N)."""
     bookmarks = load_bookmarks()
     bookmarks.sort(key=lambda b: b.bookmarked_at, reverse=True)
-    click.echo(format_table(bookmarks[:count]))
+    bookmarks = bookmarks[:count]
+    click.echo(format_json(bookmarks) if as_json else format_table(bookmarks))

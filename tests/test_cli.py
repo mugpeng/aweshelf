@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from aweshelf import cli as aweshelf
 from aweshelf.commands.list import format_table
-from aweshelf.lib.store import load_bookmarks
+from aweshelf.lib.store import load_bookmarks, save_bookmarks
 from aweshelf.types import Bookmark
 
 
@@ -21,6 +21,13 @@ class CliTests(unittest.TestCase):
     def _run_with_empty_config(self, args):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bookmarks.json"
+            env = {"AWESHELF_CONFIG": str(path)}
+            return CliRunner(env=env).invoke(aweshelf.cli, args)
+
+    def _run_with_bookmarks(self, args, bookmarks):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bookmarks.json"
+            save_bookmarks(bookmarks, path)
             env = {"AWESHELF_CONFIG": str(path)}
             return CliRunner(env=env).invoke(aweshelf.cli, args)
 
@@ -117,6 +124,155 @@ class CliTests(unittest.TestCase):
         self.assertIn("PROFILE", output.splitlines()[0])
         self.assertIn("SESSION", output.splitlines()[0])
         self.assertIn("sess-001", output)
+
+    def test_list_json_outputs_bookmark_array(self):
+        bookmark = Bookmark(
+            id="aweshelf_0001",
+            provider="claude",
+            session_id="sess-001",
+            title="Fix auth bug",
+            category="backend",
+            project_path="/tmp/test",
+            first_prompt="first prompt",
+            aweswitch_profile="cc-glm",
+            bookmarked_at="2026-05-20T10:00:00+00:00",
+        )
+
+        result = self._run_with_bookmarks(["list", "--json"], [bookmark])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], "aweshelf_0001")
+        self.assertEqual(data[0]["session_id"], "sess-001")
+        self.assertEqual(data[0]["first_prompt"], "first prompt")
+
+    def test_search_json_outputs_filtered_bookmark_array(self):
+        bookmarks = [
+            Bookmark(
+                id="aweshelf_0001",
+                provider="claude",
+                session_id="sess-001",
+                title="Fix auth bug",
+                category="backend",
+                project_path="/tmp/test",
+            ),
+            Bookmark(
+                id="aweshelf_0002",
+                provider="codex",
+                session_id="sess-002",
+                title="Write UI",
+                category="frontend",
+                project_path="/tmp/test",
+            ),
+        ]
+
+        result = self._run_with_bookmarks(["search", "auth", "--json"], bookmarks)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual([item["id"] for item in data], ["aweshelf_0001"])
+
+    def test_recent_json_outputs_recent_bookmarks_first(self):
+        bookmarks = [
+            Bookmark(
+                id="aweshelf_0001",
+                provider="claude",
+                session_id="sess-001",
+                title="Older",
+                category="backend",
+                project_path="/tmp/test",
+                bookmarked_at="2026-05-20T10:00:00+00:00",
+            ),
+            Bookmark(
+                id="aweshelf_0002",
+                provider="codex",
+                session_id="sess-002",
+                title="Newer",
+                category="frontend",
+                project_path="/tmp/test",
+                bookmarked_at="2026-05-21T10:00:00+00:00",
+            ),
+        ]
+
+        result = self._run_with_bookmarks(["recent", "--json", "-n", "1"], bookmarks)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual([item["id"] for item in data], ["aweshelf_0002"])
+
+    @patch(
+        "aweshelf.commands.sessions.find_project_sessions",
+        return_value=[
+            {
+                "session_id": "sess-001",
+                "title": "Fix auth bug",
+                "provider": "claude",
+                "project_path": "/tmp/test",
+                "source_path": "/tmp/test/sess-001.jsonl",
+                "model": "claude-sonnet-4-20250514",
+            }
+        ],
+    )
+    def test_sessions_json_outputs_project_sessions(self, mock_sessions):
+        result = CliRunner().invoke(aweshelf.cli, ["sessions", "--json", "-n", "1"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["session_id"], "sess-001")
+        self.assertEqual(data[0]["provider"], "claude")
+
+    @patch(
+        "aweshelf.commands.profiles.load_aweswitch_config",
+        return_value={
+            "profiles": {
+                "claude": {"cc-glm": {"env": {}}, "cc-openai": {"env": {}}},
+                "codex": {"codex-openai": {"env": {}}},
+            }
+        },
+    )
+    def test_profiles_json_outputs_profiles(self, mock_config):
+        result = CliRunner().invoke(aweshelf.cli, ["profiles", "--json"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual(
+            data,
+            [
+                {"provider": "claude", "name": "cc-glm"},
+                {"provider": "claude", "name": "cc-openai"},
+                {"provider": "codex", "name": "codex-openai"},
+            ],
+        )
+
+    @patch("aweshelf.commands.resume.find_bookmark")
+    @patch("aweshelf.commands.resume.build_resume_target")
+    def test_resume_dry_run_json_outputs_target(self, mock_build, mock_find):
+        from pathlib import Path
+        from aweshelf.lib.resume_target import ResumeTarget
+
+        mock_find.return_value = Bookmark(
+            id="aweshelf_0001",
+            provider="claude",
+            session_id="sess-001",
+            title="Fix auth",
+            category="backend",
+            project_path="/tmp/project",
+        )
+        mock_build.return_value = ResumeTarget(
+            argv=["claude", "--resume", "sess-001"],
+            cwd=Path("/tmp/project"),
+            warning=None,
+        )
+
+        result = CliRunner().invoke(aweshelf.cli, ["resume", "aweshelf_0001", "--dry-run", "--json"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        data = json.loads(result.output)
+        self.assertEqual(data["bookmark_id"], "aweshelf_0001")
+        self.assertEqual(data["argv"], ["claude", "--resume", "sess-001"])
+        self.assertEqual(data["cwd"], "/tmp/project")
 
 
 MOCK_SESSIONS = [
