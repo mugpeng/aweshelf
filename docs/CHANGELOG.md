@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.5
+
+VS Code extension support, search enhancements, and new sessions command.
+
+### Highlights
+
+- VS Code extension now available at [mugpeng/aweshelf-extension](https://github.com/mugpeng/aweshelf-extension) — browse, search, bookmark, and resume sessions directly from VS Code
+- Search command gains `--category`, `--provider`, and `--sort` options for server-side filtering and sorting
+- New `sessions` command for listing discovered sessions
+- Resume command improvements
+- Add LICENSE (MPL-2.0)
+- Engineering Taste section added to CONTRIBUTING.md
+
 ## v0.1.4
 
 Code dedup, AI agent docs, and README restructure.
