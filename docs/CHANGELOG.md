@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.4
+
+Code dedup, AI agent docs, and README restructure.
+
+### Highlights
+
+- Refactor: extract `filter_bookmarks` and `format_bookmark_detail` to `lib/store.py` — deduplicate search and display logic from list, show, and TUI browse
+- New `README.ai.md` — dedicated install and usage guide for AI coding agents
+- New `resources/skills/aweshelf/SKILL.md` — aweskill skill definition
+- README restructure: add AI/human usage sections, aweskill badge, Supported by section
+- Add aweswitch to Install and Supported by sections
+- Update CONTRIBUTING.md with missing command files
+- Add example screenshots in `resources/image/`
+
 ## v0.1.3
 
 CLI polish, improved bookmarking flow, and browse TUI refinements.
