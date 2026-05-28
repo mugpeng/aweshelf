@@ -49,7 +49,7 @@ pip install aweshelf
 
 ## Extensions
 
-- **[aweshelf-extension/vscode](https://github.com/Webioinfo01/aweshelf-extension/tree/main/vscode)** — VS Code extension for browsing, searching, and resuming bookmarks from the sidebar. Install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf) or download the [.vsix](https://github.com/Webioinfo01/aweshelf-extension/releases).
+- **[aweshelf-extension/vscode](https://github.com/mugpeng/aweshelf-extension/tree/main/vscode)** — VS Code extension for browsing, searching, and resuming bookmarks from the sidebar. Install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf) or download the [.vsix](https://github.com/mugpeng/aweshelf-extension/releases).
 
 ### Optional: aweswitch
 
