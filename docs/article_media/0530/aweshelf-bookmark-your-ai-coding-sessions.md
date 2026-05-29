@@ -327,13 +327,3 @@ Read https://github.com/Webioinfo01/aweshelf/blob/main/README.ai.md and follow i
 ```
 
 If you use multiple API configurations, install [aweswitch](https://github.com/Webioinfo01/aweswitch) to save and restore profiles alongside bookmarks.
-
----
-
-**Install**: `pip install aweshelf`
-
-**VS Code Extension**: [aweshelf-ext on Marketplace](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf-ext)
-
-**GitHub**: [github.com/Webioinfo01/aweshelf](https://github.com/Webioinfo01/aweshelf)
-
-**More tools**: [we.webioinfo.top](https://we.webioinfo.top/)
