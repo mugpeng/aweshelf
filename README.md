@@ -96,6 +96,9 @@ aweshelf browse
 
 The browse view keeps bookmarks grouped by category, with the selected bookmark's details on the right.
 
+<details>
+<summary>Example human usage screenshots</summary>
+
 ![aweshelf browse view with category groups](resources/image/example1.png)
 
 Press `e` to edit the current cell in place. Title, category, and profile changes can be saved without leaving the TUI.
@@ -106,7 +109,18 @@ Press `/` to filter bookmarks by title, category, session, project, prompt, or p
 
 ![aweshelf search filter](resources/image/example3.png)
 
+</details>
+
 `aweshelf browse` opens an interactive terminal UI with a sidebar table and detail pane. Browse, search, edit, and resume bookmarks without memorizing commands.
+
+You can also use the VS Code extension to browse, search, and resume bookmarks from the sidebar.
+
+<details>
+<summary>Example VS Code usage screenshot</summary>
+
+![aweshelf VS Code sidebar](resources/image/example4.png)
+
+</details>
 
 You can also use aweshelf as a regular CLI:
 
