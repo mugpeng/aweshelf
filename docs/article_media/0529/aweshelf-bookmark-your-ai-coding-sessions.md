@@ -54,103 +54,117 @@ Without aweswitch, `aweshelf` still works — you just lose the automatic profil
 pip install aweswitch
 ```
 
-## Use Case 1: Save a Productive Session Before Closing
+## Use Case 1: Ask the Agent to Bookmark a Session
 
 You are deep into a debugging session with Claude Code. You have explored the codebase, narrowed down the issue, and written a partial fix. But you need to stop for a meeting.
 
-Instead of losing everything:
+Instead of switching to a terminal, you say:
 
 ```text
-Bookmark this session.
+Bookmark this session as "Fix auth race condition" in the backend category.
 ```
 
 The agent runs:
 
 ```bash
-aweshelf bookmark
+aweshelf bookmark -t "Fix auth race condition" -c backend
 ```
 
-It prompts for a title and category. You type "Fix auth race condition" and tag it as "backend". The session is saved.
+No interactive prompts. No manual input. The agent knows the flags because `aweshelf` has a stable CLI and a SKILL.md that agents can read.
 
-Later, when you have time:
+Later, when you have time, you say:
+
+```text
+Resume the auth race condition bookmark.
+```
+
+The agent finds the matching bookmark and runs:
 
 ```bash
 aweshelf resume aweshelf_0003
 ```
 
-The agent restarts in the same project, with the same API configuration. You pick up where you left off.
+The session restarts in the same project, with the same API configuration. You pick up where you left off — without ever leaving the agent.
 
-## Use Case 2: Organize Sessions by Project or Topic
+## Use Case 2: Ask the Agent to Search and Organize
 
-Over a few weeks, you accumulate bookmarks from different projects: frontend refactors, backend debugging, data pipeline work, documentation drafts.
+After a few weeks of daily use, you have dozens of bookmarks. You do not remember the exact IDs, but you know what you were working on.
 
-Without organization, the list becomes a flat mess. With categories, it stays navigable:
+You say:
 
-```bash
-aweshelf bookmark -t "Migrate to FastAPI" -c backend
-aweshelf bookmark -t "Redesign dashboard" -c frontend
-aweshelf bookmark -t "Fix ETL timeout" -c data
+```text
+Find my bookmarks related to "payment".
 ```
 
-You can filter when listing:
+The agent runs:
+
+```bash
+aweshelf search "payment"
+```
+
+It reports the matches — titles, categories, project paths — and asks which one you want.
+
+Or you want a broader view:
+
+```text
+Show me all my backend bookmarks.
+```
 
 ```bash
 aweshelf list -c backend
 ```
 
-Or search across everything:
+The agent can also create bookmarks in bulk. If you just finished a sprint and want to save the current state:
+
+```text
+Bookmark this session as "Sprint 12 wrap-up" in the planning category.
+```
 
 ```bash
-aweshelf search "auth"
+aweshelf bookmark -t "Sprint 12 wrap-up" -c planning
 ```
 
-The TUI (`aweshelf browse`) groups bookmarks by category in a sidebar table, with details on the right. Press `/` to filter, `e` to edit inline, `Enter` to resume.
+All of this happens in natural language. You never need to remember command syntax.
 
-![aweshelf browse view with category groups](../../../resources/image/example1.png)
-
-## Use Case 3: Let the Agent Manage Bookmarks
-
-If you are working inside a coding agent, you do not need to switch to a terminal. Just ask:
-
-```text
-Bookmark this session as "Refactor payment flow" in the backend category.
-```
-
-The agent runs the `aweshelf bookmark` command with the right flags. No manual input needed.
-
-You can also ask:
-
-```text
-List my backend bookmarks.
-```
-
-or:
-
-```text
-Search for bookmarks related to "payment".
-```
-
-The agent translates natural language into `aweshelf` commands, runs them, and reports the results. This works because `aweshelf` has a stable CLI and a SKILL.md that agents can read.
-
-## Use Case 4: Resume with a Different Profile
+## Use Case 3: Ask the Agent to Resume with a Different Profile
 
 Suppose you were working with the official Claude API, but now you want to continue with a different provider — maybe a self-hosted endpoint with a different model.
 
-If you use aweswitch, `aweshelf` stored the original profile in the bookmark. You can resume with the same profile:
+You say:
 
-```bash
-aweshelf resume aweshelf_0003
+```text
+Resume aweshelf_0003 but use the cc-glm profile instead.
 ```
 
-Or switch to a different one:
+The agent runs:
 
 ```bash
 aweshelf resume aweshelf_0003 --profile cc-glm
 ```
 
-The agent restarts with the new API configuration, but in the same project context. This is useful when you want to test how a different model handles the same task, or when you need to switch providers for cost or availability reasons.
+If you use [aweswitch](https://github.com/mugpeng/aweswitch), `aweshelf` stored the original profile in the bookmark. You can resume with the same profile by default, or switch to any configured profile.
 
-## Use Case 5: Browse and Search from VS Code
+This is useful when you want to test how a different model handles the same task, or when you need to switch providers for cost or availability reasons. The agent handles the switch; you focus on the work.
+
+## Use Case 4: Browse Agent-Created Bookmarks in the TUI
+
+Your agent has been bookmarking sessions for weeks. You want to see what you have.
+
+```bash
+aweshelf browse
+```
+
+The TUI opens with bookmarks grouped by category. The left panel shows the table; the right panel shows details for the selected bookmark.
+
+![aweshelf browse view with category groups](../../../resources/image/example1.png)
+
+Press `/` to filter by title, category, session ID, project, or profile. Press `e` to edit the title or category inline. Press `Enter` to resume a session.
+
+This is where the human and agent workflows meet. The agent creates and organizes bookmarks during work sessions. The human browses, edits, and resumes them in the TUI when it is time to pick up past work.
+
+You do not have to choose between "agent-operated" and "human-operated." The agent saves. The human browses. Both operate the same data.
+
+## Use Case 5: Resume from the VS Code Sidebar
 
 Not everyone wants to use the terminal. The [aweshelf VS Code extension](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf-ext) adds a sidebar panel for browsing, searching, and resuming bookmarks.
 
@@ -158,19 +172,35 @@ Not everyone wants to use the terminal. The [aweshelf VS Code extension](https:/
 
 Install it from the VS Code or Cursor extension marketplace by searching **aweshelf-ext**. The sidebar shows bookmarks grouped by category, with right-click actions for resuming, editing, copying session IDs, and removing bookmarks.
 
-## Use Case 6: Quickly Find and Resume Any Past Session
+This is especially useful when you open your editor in the morning and want to pick up where you left off. Instead of opening a terminal and running `aweshelf list`, you click a bookmark in the sidebar and resume.
+
+The same bookmarks your agent created during yesterday's session are right there — categorized, searchable, and one click away.
+
+## Use Case 6: Let the Agent Find and Resume Any Past Session
 
 After a few months, you have dozens of bookmarks. Some are stale. Some are gold.
 
-The fastest way to find what you need:
+You say:
 
-```bash
-aweshelf search "refactor"
+```text
+Find the session where we were working on the ETL pipeline timeout issue.
 ```
 
-This searches across titles, categories, session IDs, project paths, and even the first prompt of each session. You do not need to remember the exact bookmark ID — just a keyword from what you were working on.
+The agent runs:
 
-From the TUI, press `/` and type a filter. The sidebar updates in real time.
+```bash
+aweshelf search "ETL timeout"
+```
+
+It finds the match, shows the details — project path, category, date, profile — and asks if you want to resume.
+
+```bash
+aweshelf resume aweshelf_0017
+```
+
+You do not need to remember the bookmark ID. You do not need to remember the category. You just describe what you were working on, and the agent finds it.
+
+This is the difference between a bookmark system that requires you to remember IDs and one that lets you describe what you want.
 
 ## Why This Matters
 
@@ -178,17 +208,15 @@ AI coding sessions are becoming more valuable over time. A well-structured debug
 
 But the tooling has not caught up. Most agents treat sessions as disposable. When the terminal closes, the context is gone.
 
-`aweshelf` is a small tool that addresses this gap:
+`aweshelf` addresses this with a simple division of labor:
 
-- **Save**: bookmark a session in one command, with metadata that matters
-- **Organize**: categorize and search across bookmarks
-- **Restore**: resume a session with the same project context and API configuration
-- **Automate**: let your agent manage bookmarks through natural language
-- **Browse**: use the TUI or VS Code extension for a visual overview
+**The agent creates.** During a work session, you tell the agent what to save. It runs the CLI, fills in the metadata, and organizes the bookmark. You stay focused on the code.
 
-It does not try to be a platform. It does not sync to the cloud. It does not require an account. It is a local CLI that stores bookmarks in a JSON file you can read, edit, and back up.
+**The human browses.** When it is time to pick up past work, you open the TUI or the VS Code sidebar. You see your bookmarks grouped by category. You filter, edit, and resume with a click or a keystroke.
 
-The best tools for AI coding agents should be:
+**Both operate the same data.** The agent writes bookmarks through the CLI. The human reads them through the TUI or VS Code. No sync layer. No special protocol. Just a JSON file on disk.
+
+This works because `aweshelf` follows a few principles:
 
 - documented for both humans and agents
 - scriptable through a stable CLI
@@ -196,7 +224,7 @@ The best tools for AI coding agents should be:
 - inspectable before applying changes
 - easy to verify after each operation
 
-`aweshelf` follows those principles. The bookmarks are on disk. The format is plain JSON. The CLI is predictable. The agent can read and write bookmarks without guessing.
+It does not try to be a platform. It does not sync to the cloud. It does not require an account. The bookmarks are on disk. The format is plain JSON. The agent can read and write without guessing. The human can browse without memorizing commands.
 
 ## More from Webioinfo
 
@@ -229,7 +257,7 @@ aweshelf browse
 Or ask your coding agent:
 
 ```text
-Install aweshelf and bookmark this session.
+Read https://github.com/Webioinfo01/aweshelf/blob/main/README.ai.md and follow it to install aweshelf for this agent.
 ```
 
 If you use multiple API configurations, install [aweswitch](https://github.com/mugpeng/aweswitch) to save and restore profiles alongside bookmarks.
