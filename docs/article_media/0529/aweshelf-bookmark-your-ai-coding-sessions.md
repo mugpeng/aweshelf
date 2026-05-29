@@ -6,7 +6,7 @@ Jason ([@jxnlco](https://x.com/jxnlco)) recently shared how to get the most out 
 
 That sounds obvious. But it is not how most AI coding agents work today.
 
-You just spent an hour with Claude Code debugging a race condition in your auth middleware. The session was productive. You found the root cause, sketched a fix, and started refactoring.
+You just spent an hour with Claude Code debugging a race condition in your auth middleware. Or maybe you were troubleshooting a Snakemake pipeline where STAR alignment kept failing on a new reference genome. Either way, the session was productive. You found the root cause, sketched a fix, and started refactoring.
 
 Then you closed the terminal.
 
@@ -66,7 +66,7 @@ pip install aweswitch
 
 ## Use Case 1: Ask the Agent to Bookmark a Session
 
-You are deep into a debugging session with Claude Code. You have explored the codebase, narrowed down the issue, and written a partial fix. But you need to stop for a meeting.
+You are deep into a debugging session with Claude Code. You have explored the codebase, narrowed down the issue, and written a partial fix. Or maybe you have been working with your agent to build a gene annotation pipeline and just got GFF3 parsing working. Either way, you need to stop for a meeting.
 
 Instead of switching to a terminal, you say:
 
@@ -74,10 +74,15 @@ Instead of switching to a terminal, you say:
 Bookmark this session as "Fix auth race condition" in the backend category.
 ```
 
+```text
+Bookmark this session as "Gene annotation pipeline — GFF3 parsing done" in the bioinfo category.
+```
+
 The agent runs:
 
 ```bash
 aweshelf bookmark -t "Fix auth race condition" -c backend
+aweshelf bookmark -t "Gene annotation pipeline — GFF3 parsing done" -c bioinfo
 ```
 
 No interactive prompts. No manual input. The agent knows the flags because `aweshelf` has a stable CLI and a SKILL.md that agents can read.
@@ -103,13 +108,13 @@ After a few weeks of daily use, you have dozens of bookmarks. You do not remembe
 You say:
 
 ```text
-Find my bookmarks related to "payment".
+Find my bookmarks related to "RNA-seq".
 ```
 
 The agent runs:
 
 ```bash
-aweshelf search "payment"
+aweshelf search "RNA-seq"
 ```
 
 It reports the matches — titles, categories, project paths — and asks which one you want.
@@ -117,21 +122,21 @@ It reports the matches — titles, categories, project paths — and asks which 
 Or you want a broader view:
 
 ```text
-Show me all my backend bookmarks.
+Show me all my bioinfo bookmarks.
 ```
 
 ```bash
-aweshelf list -c backend
+aweshelf list -c bioinfo
 ```
 
 The agent can also create bookmarks in bulk. If you just finished a sprint and want to save the current state:
 
 ```text
-Bookmark this session as "Sprint 12 wrap-up" in the planning category.
+Bookmark this session as "Variant calling pipeline — DeepGeno integrated" in the bioinfo category.
 ```
 
 ```bash
-aweshelf bookmark -t "Sprint 12 wrap-up" -c planning
+aweshelf bookmark -t "Variant calling pipeline — DeepGeno integrated" -c bioinfo
 ```
 
 All of this happens in natural language. You never need to remember command syntax.
@@ -182,7 +187,7 @@ Not everyone wants to use the terminal. The [aweshelf VS Code extension](https:/
 
 Install it from the VS Code or Cursor extension marketplace by searching **aweshelf-ext**. The sidebar shows bookmarks grouped by category, with right-click actions for resuming, editing, copying session IDs, and removing bookmarks.
 
-This is especially useful when you open your editor in the morning and want to pick up where you left off. Instead of opening a terminal and running `aweshelf list`, you click a bookmark in the sidebar and resume.
+This is especially useful when you open your editor in the morning and want to pick up where you left off — whether that is a web app refactoring or a single-cell RNA-seq analysis. Instead of opening a terminal and running `aweshelf list`, you click a bookmark in the sidebar and resume.
 
 The same bookmarks your agent created during yesterday's session are right there — categorized, searchable, and one click away.
 
@@ -193,12 +198,17 @@ After a few months, you have dozens of bookmarks. Some are stale. Some are gold.
 You say:
 
 ```text
-Find the session where we were working on the ETL pipeline timeout issue.
+Find the session where we were working on the scRNA-seq clustering issue.
+```
+
+```text
+Find the ETL pipeline timeout session.
 ```
 
 The agent runs:
 
 ```bash
+aweshelf search "scRNA-seq clustering"
 aweshelf search "ETL timeout"
 ```
 
@@ -216,7 +226,7 @@ The same applies in the TUI. Press `/` to search, press `e` to edit the current 
 
 ## Use Case 7: Edit Bookmarks Your Way
 
-Bookmarks are not static. A session that was "debugging" yesterday might be "fixed — needs review" today.
+Bookmarks are not static. A session that was "debugging" yesterday might be "fixed — needs review" today. A bioinformatics pipeline you tagged as "RNA-seq QC" might need to be renamed to "RNA-seq QC — STAR alignment fixed" after you resolved the reference genome issue.
 
 From the TUI, press `e` to enter inline edit mode. Change the title, category, or profile directly in the table. `Tab` moves to the next field, `Enter` saves, `Esc` cancels.
 
@@ -228,10 +238,15 @@ Or ask the agent:
 Rename aweshelf_0005 to "Refactor payment service" and move it to the backend category.
 ```
 
+```text
+Update aweshelf_0012 title to "DEG analysis — fixed batch effect" and move it to the bioinfo category.
+```
+
 The agent runs:
 
 ```bash
 aweshelf edit aweshelf_0005 -t "Refactor payment service" -c backend
+aweshelf edit aweshelf_0012 -t "DEG analysis — fixed batch effect" -c bioinfo
 ```
 
 No matter who makes the change — you in the TUI, or the agent through the CLI — the bookmark is updated everywhere. The TUI, the VS Code sidebar, and the CLI all see the same state.
