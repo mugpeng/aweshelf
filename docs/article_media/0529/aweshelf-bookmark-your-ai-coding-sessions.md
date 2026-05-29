@@ -1,4 +1,10 @@
-# Bookmark Your AI Coding Sessions — and Actually Find Them Again
+# Make Your AI Coding Sessions Durable — aweshelf Brings Codex's Best Practice to Every Agent
+
+![aweshelf](../../../logo/aweshelf.png)
+
+Jason ([@jxnlco](https://x.com/jxnlco)) recently shared how to get the most out of OpenAI Codex. His first point was [**Durable threads**](https://x.com/jxnlco/status/2057153744630890620) — the idea that a coding session should survive across time. You should be able to stop, come back later, and pick up exactly where you left off.
+
+That sounds obvious. But it is not how most AI coding agents work today.
 
 You just spent an hour with Claude Code debugging a race condition in your auth middleware. The session was productive. You found the root cause, sketched a fix, and started refactoring.
 
@@ -8,7 +14,9 @@ The next morning, you open a new session. The context is gone. You try to recons
 
 This is the default experience with AI coding agents. Every session is ephemeral. When it ends, the context evaporates.
 
-That is the problem `aweshelf` solves.
+Codex has durable threads as a built-in feature. But what about Claude Code? What about Cursor? What about the dozens of other coding agents that do not have this built in?
+
+That is the problem `aweshelf` solves — durable sessions for any agent.
 
 GitHub: [github.com/Webioinfo01/aweshelf](https://github.com/Webioinfo01/aweshelf)
 
@@ -22,6 +30,8 @@ When you close a Claude Code or Codex session, you lose:
 - the files you were editing
 - the mental model you built up
 - the specific API endpoint, model, and token you were using
+
+Some platforms are starting to solve this. OpenAI Codex has durable threads. But most agents still treat sessions as disposable. You close the terminal, and the context is gone.
 
 You can try to reconstruct this later. Sometimes you succeed. Often you just start over.
 
@@ -202,11 +212,39 @@ You do not need to remember the bookmark ID. You do not need to remember the cat
 
 This is the difference between a bookmark system that requires you to remember IDs and one that lets you describe what you want.
 
+The same applies in the TUI. Press `/` to search, press `e` to edit the current cell inline — title, category, and profile can all be changed without leaving the table. Whether you prefer natural language with the agent or keyboard shortcuts in the TUI, the data is the same.
+
+## Use Case 7: Edit Bookmarks Your Way
+
+Bookmarks are not static. A session that was "debugging" yesterday might be "fixed — needs review" today.
+
+From the TUI, press `e` to enter inline edit mode. Change the title, category, or profile directly in the table. `Tab` moves to the next field, `Enter` saves, `Esc` cancels.
+
+![aweshelf inline edit mode](../../../resources/image/example2.png)
+
+Or ask the agent:
+
+```text
+Rename aweshelf_0005 to "Refactor payment service" and move it to the backend category.
+```
+
+The agent runs:
+
+```bash
+aweshelf edit aweshelf_0005 -t "Refactor payment service" -c backend
+```
+
+No matter who makes the change — you in the TUI, or the agent through the CLI — the bookmark is updated everywhere. The TUI, the VS Code sidebar, and the CLI all see the same state.
+
+This is the point. The agent does the mechanical work. The human does the judgment work. The data does not care who touched it.
+
 ## Why This Matters
 
-AI coding sessions are becoming more valuable over time. A well-structured debugging session can save hours of work. A thorough architecture exploration can prevent weeks of wrong turns.
+The idea of durable threads is gaining traction. Jason's advice for Codex users was clear: make your sessions durable. OpenAI built it into Codex as a first-class feature.
 
-But the tooling has not caught up. Most agents treat sessions as disposable. When the terminal closes, the context is gone.
+But durability should not be a platform exclusive. Claude Code, Cursor, Gemini CLI, and every other coding agent deserves the same capability. The value is not in which agent you use — it is in the work you did and whether you can find it again.
+
+`aweshelf` makes sessions durable across any agent, with a simple division of labor:
 
 `aweshelf` addresses this with a simple division of labor:
 
