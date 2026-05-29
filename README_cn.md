@@ -9,7 +9,7 @@
     <a href="https://we.webioinfo.top/">Webioinfo</a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-0.1.3-7C3AED?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-0.1.5-7C3AED?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/python-%E2%89%A53.10-0EA5E9?style=flat-square" alt="Python">
   </p>
   <p>
@@ -56,6 +56,10 @@ aweshelf 在收藏会话时会保存当前的 aweswitch profile。安装 [aweswi
 ```bash
 pip install aweswitch
 ```
+
+## 扩展
+
+- **[aweshelf-extension/vscode](https://github.com/mugpeng/aweshelf-extension/tree/main/vscode)** — VS Code / Cursor 扩展，可在侧边栏浏览、搜索和恢复书签。在扩展市场搜索 **aweshelf-ext**，或 [打开 Marketplace 页面](https://marketplace.visualstudio.com/items?itemName=webioinfo.aweshelf-ext)。也可下载 [.vsix](https://github.com/mugpeng/aweshelf-extension/releases) 安装。
 
 ## 支持工具
 
