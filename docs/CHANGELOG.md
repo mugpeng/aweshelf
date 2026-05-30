@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.6
+
+Docs refresh and version sync.
+
+### Highlights
+
+- Sync Chinese README with English version
+- Update VS Code extension references to aweshelf-extension
+- Add new blog post: "Bookmark Your AI Coding Sessions"
+- Update media page with aweskill and aweswitch pairing
+- Fix `__init__.py` version mismatch (was stuck at 0.1.3)
+
 ## v0.1.5
 
 VS Code extension support, search enhancements, and new sessions command.
